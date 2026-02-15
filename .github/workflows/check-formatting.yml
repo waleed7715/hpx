@@ -23,7 +23,7 @@ jobs:
       run: |
         git config --global --add safe.directory /__w/hpx/hpx
         REPO_ROOT=$(git rev-parse --show-toplevel)
-        cd "$REPO_ROOT" && shopt -s globstar # to activate the ** globbing
+        cd "$REPO_ROOT/libs" && shopt -s globstar # to activate the ** globbing
         
         clang-format-20 --version
         clang-format-20 -i **/*.{cpp,hpp}
