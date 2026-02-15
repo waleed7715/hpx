@@ -92,7 +92,7 @@ jobs:
     - name: Running Spell Check
       shell: bash
       run: |
-        # if [[ -n "${{ github.event.pull_request.number || '' }}" ]] || [[ "${{ github.event_name }}" == "pull_request" ]]; then
+        if [[ -n "${{ github.event.pull_request.number || '' }}" ]] || [[ "${{ github.event_name }}" == "pull_request" ]]; then
           git config --global --add safe.directory /__w/hpx/hpx
           REPO_ROOT=$(git rev-parse --show-toplevel)
           cd "$REPO_ROOT"
@@ -124,9 +124,9 @@ jobs:
               cat /tmp/spelling_suggestions.txt
               exit 1
           fi
-        # else
-        #     echo "Skipping spellcheck on non-PR build"
-        # fi
+        else
+            echo "Skipping spellcheck on non-PR build"
+        fi
 
     - name: Upload Spell Check Artifacts
       if: success() || failure()
