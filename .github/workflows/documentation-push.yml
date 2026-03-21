@@ -41,14 +41,6 @@ jobs:
         run-id: ${{ github.event.workflow_run.id }}
         github-token: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Download Dependencies Report Artifacts
-      uses: actions/download-artifact@v7
-      with:
-        name: hpx-depreport
-        path: build/share/hpx/docs/report
-        run-id: ${{ github.event.workflow_run.id }}
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-
     - name: Add GitHub to known hosts
       shell: bash
       run: |
