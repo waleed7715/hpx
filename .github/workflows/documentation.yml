@@ -8,7 +8,10 @@ name: Documentation Build
 
 on:
   pull_request:
-  push:
+  workflow_run:
+    workflows: ["Depreport"]
+    types:
+      - completed
     branches:
       - master
       - 'release**'
@@ -18,9 +21,16 @@ jobs:
   build-documentation:
     runs-on: ubuntu-latest
     container: stellargroup/build_env:17
+    if: >
+      github.event_name == 'pull_request' ||
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    permissions:
+      actions: read
 
     steps:
     - uses: actions/checkout@v6
+
     - name: Configure
       shell: bash
       run: |
@@ -36,14 +46,17 @@ jobs:
               -DHPX_WITH_DOCUMENTATION_OUTPUT_FORMATS="html;singlehtml;latexpdf" \
 
     - name: Build Documentation (HTML)
+      timeout-minutes: 120
       shell: bash
       run: cmake --build build --target docs-html
 
     - name: Build Documentation (Single HTML)
+      timeout-minutes: 120
       shell: bash
       run: cmake --build build --target docs-singlehtml
 
     - name: Build Documentation (PDF)
+      timeout-minutes: 120
       shell: bash
       run: cmake --build build --target docs-latexpdf
 
@@ -55,15 +68,47 @@ jobs:
           build/share/hpx/docs/html
           build/share/hpx/docs/singlehtml
           build/share/hpx/docs/latexpdf/latex/HPX.pdf
-
-    - name: Configure Local Git
+    
+    - name: Add GitHub to known hosts
+      if: github.ref == 'refs/heads/master'
       shell: bash
       run: |
-          git config --global user.name "StellarBot"
-          git config --global user.email "contact@stellar-group.org"
+        mkdir -p /root/.ssh
+        chmod 700 /root/.ssh
+        ssh-keyscan -H github.com >> /root/.ssh/known_hosts
+
+    - name: Setup SSH deploy key
+      if: github.ref == 'refs/heads/master'
+      shell: bash
+      run: |
+        echo "${{ secrets.DOCS_DEPLOY_KEY }}" > /root/.ssh/id_ed25519
+        chmod 600 /root/.ssh/id_ed25519
+
+    - name: Configure Local Git
+      if: github.ref == 'refs/heads/master'
+      shell: bash
+      run: |
+        git config --global user.name "TheHPXBot"
+        git config --global user.email "hpxdude42@protonmail.com"
+    
+    - name: Download Dependecies Report Artifacts
+      if: github.ref == 'refs/heads/master'
+      uses: actions/download-artifact@v7
+      with:
+        name: hpx-depreport
+        path: build/share/hpx/docs/report
+        run-id: ${{ github.event.workflow_run.id }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Push Documentation
       if: github.ref == 'refs/heads/master'
       shell: bash
+      working-directory: /__w/hpx/hpx/build/docs
       run: |
-        cmake --build build --target git_docs
+        cmake \
+          -DHPX_BINARY_DIR=/__w/hpx/hpx/build \
+          -DHPX_VERSION=2.0.0 \
+          -DHPX_WITH_GIT_BRANCH=master \
+          -DHPX_WITH_DOCUMENTATION_OUTPUT_FORMATS="html singlehtml latexpdf" \
+          -DGIT_REPOSITORY="git@github.com:STEllAR-GROUP/hpx-docs.git --branch HPXBot-test" \
+          -P /__w/hpx/hpx/cmake/HPX_UpdateGitDocs.cmake
