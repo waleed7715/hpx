@@ -64,6 +64,15 @@ jobs:
       timeout-minutes: 120
       shell: bash
       run: cmake --build build --target docs-latexpdf
+    
+    - name: Download Dependencies Report Artifacts
+      if: github.event_name == 'workflow_run'
+      uses: actions/download-artifact@v7
+      with:
+        name: hpx-depreport
+        path: build/share/hpx/docs/report
+        run-id: ${{ github.event.workflow_run.id }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Upload Documentation Artifacts
       uses: actions/upload-artifact@v7
@@ -73,3 +82,4 @@ jobs:
           build/share/hpx/docs/html
           build/share/hpx/docs/singlehtml
           build/share/hpx/docs/latexpdf/latex/HPX.pdf
+          build/share/hpx/docs/report
