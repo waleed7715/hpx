@@ -16,10 +16,6 @@ on:
       - 'release**'
   workflow_dispatch:
 
-concurrency:
-  group: docs-deploy
-  cancel-in-progress: false
-
 jobs:
   deploy-documentation:
     runs-on: ubuntu-latest
