@@ -30,3 +30,4 @@ jobs:
           sudo apt-get install -y libv8-dev
       - name: Validate CITATION.cff
         uses: dieghernan/cff-validator@main
+
