@@ -21,8 +21,6 @@
 #include <hpx/parallel/util/detail/select_partitioner.hpp>
 #include <hpx/topology/topology.hpp>
 #include <hpx/modules/coroutines.hpp>
-#include <hpx/modules/resource_partitioner.hpp>
-#include <hpx/modules/runtime_local.hpp>
 
 #if !defined(HPX_COMPUTE_DEVICE_CODE)
 #include <hpx/modules/async_local.hpp>
@@ -108,7 +106,7 @@ namespace hpx::parallel::util {
                     auto const hinted_policy =
                         hpx::execution::experimental::with_hint(priority_policy,
                             hpx::threads::thread_schedule_hint{hpx::threads::
-                                thread_placement_hint::depth_first});
+                                    thread_placement_hint::depth_first});
 
                     auto const stackless_policy =
                         hpx::execution::experimental::with_stacksize(
@@ -190,11 +188,11 @@ namespace hpx::parallel::util {
                         hpx::parallel::execution::bulk_sync_execute(
                             f1f3_exec,
                             [f3, workitems, shape = HPX_MOVE(shape), f3_offset](
-                                std::size_t idx) {
-                                auto it = 
+                                std::size_t idx) mutable {
+                                auto it =
                                     std::next(hpx::util::begin(shape), idx);
                                 HPX_INVOKE(f3, hpx::get<0>(*it),
-                                    hpx::get<1>(*it), 
+                                    hpx::get<1>(*it),
                                     workitems[idx + f3_offset]);
                             },
                             hpx::util::counting_shape<std::size_t>(size));
