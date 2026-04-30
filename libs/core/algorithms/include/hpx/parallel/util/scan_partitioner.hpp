@@ -14,10 +14,15 @@
 #include <hpx/modules/async_combinators.hpp>
 #include <hpx/modules/errors.hpp>
 #include <hpx/modules/execution.hpp>
+#include <hpx/iterator_support/counting_shape.hpp>
 #include <hpx/parallel/util/detail/chunk_size.hpp>
 #include <hpx/parallel/util/detail/handle_local_exceptions.hpp>
 #include <hpx/parallel/util/detail/scoped_executor_parameters.hpp>
 #include <hpx/parallel/util/detail/select_partitioner.hpp>
+#include <hpx/topology/topology.hpp>
+#include <hpx/modules/coroutines.hpp>
+#include <hpx/modules/resource_partitioner.hpp>
+#include <hpx/modules/runtime_local.hpp>
 
 #if !defined(HPX_COMPUTE_DEVICE_CODE)
 #include <hpx/modules/async_local.hpp>
@@ -27,6 +32,7 @@
 #include <cstddef>
 #include <exception>
 #include <list>
+#include <tuple>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -70,15 +76,13 @@ namespace hpx::parallel::util {
                 scoped_executor_parameters scoped_params(
                     policy.parameters(), policy.executor());
 
-                std::vector<hpx::shared_future<Result1>> workitems;
+                std::vector<Result1> workitems;
                 std::vector<hpx::future<Result2>> finalitems;
-                std::vector<Result1> f2results;
                 std::list<std::exception_ptr> errors;
                 try
                 {
                     // pre-initialize first intermediate result
-                    workitems.push_back(
-                        make_ready_future(HPX_FORWARD(T, init)));
+                    workitems.push_back(HPX_FORWARD(T, init));
 
                     HPX_ASSERT(count > 0);
                     FwdIter first_ = first;
@@ -97,10 +101,33 @@ namespace hpx::parallel::util {
                     // schedule every chunk on a separate thread
                     std::size_t size = hpx::util::size(shape);
 
+                    using value_type =
+                        typename std::iterator_traits<FwdIter>::value_type;
+
+                    auto const priority_policy =
+                        hpx::execution::experimental::with_priority(
+                            policy, hpx::threads::thread_priority::bound);
+
+                    auto const hinted_policy =
+                        hpx::execution::experimental::with_hint(
+                            priority_policy,
+                            hpx::threads::thread_schedule_hint{
+                                hpx::threads::thread_placement_hint::depth_first});
+
+                    auto const stackless_policy =
+                        hpx::execution::experimental::with_stacksize(
+                            hinted_policy, hpx::threads::thread_stacksize::nostack);
+
+                    auto const& f1f3_exec = stackless_policy.executor();
+
                     // If the size of count was enough to warrant testing for a
                     // chunk, pre-initialize second intermediate result and
-                    // start f3.
-                    if (workitems.size() == 2)
+                    // start f3 for that test chunk immediately (its prefix is
+                    // simply init = workitems[0]).  workitems[1] is left as the
+                    // raw f1 result so the f2 sequential pass below sees it
+                    // exactly once.
+                    bool const had_test_chunk = (workitems.size() == 2);
+                    if (had_test_chunk)
                     {
                         HPX_ASSERT(count_ > count);
 
@@ -108,11 +135,8 @@ namespace hpx::parallel::util {
                         finalitems.reserve(size + 1);
 
                         finalitems.push_back(
-                            execution::async_execute(policy.executor(), f3,
-                                first_, count_ - count, workitems[0].get()));
-
-                        workitems[1] = make_ready_future(HPX_INVOKE(
-                            f2, workitems[0].get(), workitems[1].get()));
+                            execution::async_execute(f1f3_exec,
+                                f3, first_, count_ - count, workitems[0]));
                     }
                     else
                     {
@@ -120,41 +144,63 @@ namespace hpx::parallel::util {
                         finalitems.reserve(size);
                     }
 
-                    // Schedule first step of scan algorithm, step 2 is
-                    // performed when all f1 tasks are done
-                    for (auto const& elem : shape)
                     {
-                        auto curr = execution::async_execute(policy.executor(),
-                            f1, hpx::get<0>(elem), hpx::get<1>(elem))
-                                        .share();
+#if HPX_HAVE_ITTNOTIFY != 0 && !defined(HPX_HAVE_APEX)
+                        static hpx::util::itt::event e("F1_START");
+                        hpx::util::itt::event_tick(e);
+#endif
+                        auto bulk_results =
+                            hpx::parallel::execution::bulk_sync_execute(
+                                f1f3_exec,
+                                [&f1](auto const& elem) {
+                                    return HPX_INVOKE(
+                                        f1, hpx::get<0>(elem), hpx::get<1>(elem));
+                                },
+                                shape);
 
-                        workitems.push_back(HPX_MOVE(curr));
+                        for (auto& result : bulk_results)
+                            workitems.push_back(HPX_MOVE(result));
                     }
 
-                    // Wait for all f1 tasks to finish
-                    if (hpx::wait_all_nothrow(workitems))
+                    // perform f2 sequentially in one go.
+                    // When a test chunk was used, workitems[1] already holds the
+                    // raw f1 result for that chunk; the loop processes it once
+                    // together with the rest, producing correct prefix sums in
+                    // workitems[1..N].
                     {
-                        handle_local_exceptions::call(workitems, errors);
+#if HPX_HAVE_ITTNOTIFY != 0 && !defined(HPX_HAVE_APEX)
+                        static hpx::util::itt::event e("F2_START");
+                        hpx::util::itt::event_tick(e);
+#endif
+                        Result1 running = workitems[0];
+                        for (std::size_t i = 1; i < workitems.size(); i++)
+                        {
+                            running = HPX_INVOKE(f2, running, workitems[i]);
+                            workitems[i] = running;
+                        }
                     }
 
-                    // perform f2 sequentially in one go
-                    f2results.resize(workitems.size());
-                    auto result = workitems[0].get();
-                    f2results[0] = result;
-                    for (std::size_t i = 1; i < workitems.size(); i++)
+                    // F3 return type is void.
+                    // When a test chunk was used, its f3 was already launched in
+                    // finalitems above.  The bulk below covers shape[0..size-1]
+                    // which correspond to workitems[f3_offset .. f3_offset+size-1]
+                    // (the prefix sums that precede each remaining chunk).
                     {
-                        result = HPX_INVOKE(f2, result, workitems[i].get());
-                        f2results[i] = result;
-                    }
-
-                    // start all f3 tasks
-                    std::size_t i = 0;
-                    for (auto const& elem : shape)
-                    {
-                        finalitems.push_back(execution::async_execute(
-                            policy.executor(), f3, hpx::get<0>(elem),
-                            hpx::get<1>(elem), f2results[i]));
-                        i++;
+#if HPX_HAVE_ITTNOTIFY != 0 && !defined(HPX_HAVE_APEX)
+                        static hpx::util::itt::event e("F3_START");
+                        hpx::util::itt::event_tick(e);
+#endif
+                        std::size_t const f3_offset = had_test_chunk ? 1 : 0;
+                        hpx::parallel::execution::bulk_sync_execute(
+                            f1f3_exec,
+                            [f3, workitems, shape = HPX_MOVE(shape), f3_offset](
+                                std::size_t idx) {
+                                auto it = std::next(
+                                    hpx::util::begin(shape), idx);
+                                HPX_INVOKE(f3, hpx::get<0>(*it),
+                                    hpx::get<1>(*it), workitems[idx + f3_offset]);
+                            },
+                            hpx::util::counting_shape<std::size_t>(size));
                     }
 
                     scoped_params.mark_end_of_scheduling();
@@ -164,7 +210,7 @@ namespace hpx::parallel::util {
                     handle_local_exceptions::call(
                         std::current_exception(), errors);
                 }
-                return reduce(HPX_MOVE(f2results), HPX_MOVE(finalitems),
+                return reduce(HPX_MOVE(workitems), HPX_MOVE(finalitems),
                     HPX_MOVE(errors), HPX_FORWARD(F4, f4));
 #endif
             }
@@ -211,7 +257,8 @@ namespace hpx::parallel::util {
             template <typename ExPolicy_, typename FwdIter, typename T,
                 typename F1, typename F2, typename F3, typename F4>
             static hpx::future<R> call(ExPolicy_&& policy, FwdIter first,
-                std::size_t count, T&& init, F1&& f1, F2&& f2, F3&& f3, F4&& f4)
+                std::size_t count, T&& init, F1&& f1, F2&& f2, F3&& f3,
+                F4&& f4)
             {
                 return execution::async_execute(policy.executor(),
                     [first, count, policy, init = HPX_FORWARD(T, init),
