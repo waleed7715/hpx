@@ -102,7 +102,7 @@ namespace hpx::parallel::util {
 
                     auto const priority_policy =
                         hpx::execution::experimental::with_priority(
-                            policy, hpx::threads::thread_priority::high);
+                            policy, hpx::threads::thread_priority::bound);
 
                     auto const hinted_policy =
                         hpx::execution::experimental::with_hint(priority_policy,
@@ -112,7 +112,7 @@ namespace hpx::parallel::util {
                     auto const stackless_policy =
                         hpx::execution::experimental::with_stacksize(
                             hinted_policy,
-                            hpx::threads::thread_stacksize::nostack);
+                            hpx::threads::thread_stacksize::small_);
 
                     auto const& f1f3_exec = stackless_policy.executor();
 
