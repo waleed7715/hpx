@@ -13,14 +13,12 @@
 #include <hpx/assert.hpp>
 #include <hpx/iterator_support/counting_shape.hpp>
 #include <hpx/modules/async_combinators.hpp>
-#include <hpx/modules/coroutines.hpp>
 #include <hpx/modules/errors.hpp>
 #include <hpx/modules/execution.hpp>
 #include <hpx/parallel/util/detail/chunk_size.hpp>
 #include <hpx/parallel/util/detail/handle_local_exceptions.hpp>
 #include <hpx/parallel/util/detail/scoped_executor_parameters.hpp>
 #include <hpx/parallel/util/detail/select_partitioner.hpp>
-#include <hpx/topology/topology.hpp>
 
 #if !defined(HPX_COMPUTE_DEVICE_CODE)
 #include <hpx/modules/async_local.hpp>
@@ -100,21 +98,7 @@ namespace hpx::parallel::util {
                     // schedule every chunk on a separate thread
                     std::size_t size = hpx::util::size(shape);
 
-                    auto const priority_policy =
-                        hpx::execution::experimental::with_priority(
-                            policy, hpx::threads::thread_priority::bound);
-
-                    auto const hinted_policy =
-                        hpx::execution::experimental::with_hint(priority_policy,
-                            hpx::threads::thread_schedule_hint{hpx::threads::
-                                    thread_placement_hint::depth_first});
-
-                    auto const stackless_policy =
-                        hpx::execution::experimental::with_stacksize(
-                            hinted_policy,
-                            hpx::threads::thread_stacksize::nostack);
-
-                    auto const& f1f3_exec = stackless_policy.executor();
+                    auto const& f1f3_exec = policy.executor();
 
                     // If the size of count was enough to warrant testing for a
                     // chunk, pre-initialize second intermediate result and
