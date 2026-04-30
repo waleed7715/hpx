@@ -29,6 +29,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <exception>
+#include <iterator>
 #include <list>
 #include <tuple>
 #include <type_traits>
@@ -191,7 +192,8 @@ namespace hpx::parallel::util {
                                 std::size_t idx) mutable {
                                 auto it =
                                     std::next(hpx::util::begin(shape), idx);
-                                HPX_INVOKE(f3, hpx::get<0>(*it),
+                                auto f3_copy = f3;
+                                HPX_INVOKE(f3_copy, hpx::get<0>(*it),
                                     hpx::get<1>(*it),
                                     workitems[idx + f3_offset]);
                             },
