@@ -11,16 +11,16 @@
 
 #include <hpx/config.hpp>
 #include <hpx/assert.hpp>
+#include <hpx/iterator_support/counting_shape.hpp>
 #include <hpx/modules/async_combinators.hpp>
+#include <hpx/modules/coroutines.hpp>
 #include <hpx/modules/errors.hpp>
 #include <hpx/modules/execution.hpp>
-#include <hpx/iterator_support/counting_shape.hpp>
 #include <hpx/parallel/util/detail/chunk_size.hpp>
 #include <hpx/parallel/util/detail/handle_local_exceptions.hpp>
 #include <hpx/parallel/util/detail/scoped_executor_parameters.hpp>
 #include <hpx/parallel/util/detail/select_partitioner.hpp>
 #include <hpx/topology/topology.hpp>
-#include <hpx/modules/coroutines.hpp>
 
 #if !defined(HPX_COMPUTE_DEVICE_CODE)
 #include <hpx/modules/async_local.hpp>
