@@ -101,22 +101,19 @@ namespace hpx::parallel::util {
                     // schedule every chunk on a separate thread
                     std::size_t size = hpx::util::size(shape);
 
-                    using value_type =
-                        typename std::iterator_traits<FwdIter>::value_type;
-
                     auto const priority_policy =
                         hpx::execution::experimental::with_priority(
                             policy, hpx::threads::thread_priority::bound);
 
                     auto const hinted_policy =
-                        hpx::execution::experimental::with_hint(
-                            priority_policy,
-                            hpx::threads::thread_schedule_hint{
-                                hpx::threads::thread_placement_hint::depth_first});
+                        hpx::execution::experimental::with_hint(priority_policy,
+                            hpx::threads::thread_schedule_hint{hpx::threads::
+                                thread_placement_hint::depth_first});
 
                     auto const stackless_policy =
                         hpx::execution::experimental::with_stacksize(
-                            hinted_policy, hpx::threads::thread_stacksize::nostack);
+                            hinted_policy,
+                            hpx::threads::thread_stacksize::nostack);
 
                     auto const& f1f3_exec = stackless_policy.executor();
 
@@ -134,9 +131,8 @@ namespace hpx::parallel::util {
                         workitems.reserve(size + 2);
                         finalitems.reserve(size + 1);
 
-                        finalitems.push_back(
-                            execution::async_execute(f1f3_exec,
-                                f3, first_, count_ - count, workitems[0]));
+                        finalitems.push_back(execution::async_execute(f1f3_exec,
+                            f3, first_, count_ - count, workitems[0]));
                     }
                     else
                     {
@@ -153,8 +149,8 @@ namespace hpx::parallel::util {
                             hpx::parallel::execution::bulk_sync_execute(
                                 f1f3_exec,
                                 [&f1](auto const& elem) {
-                                    return HPX_INVOKE(
-                                        f1, hpx::get<0>(elem), hpx::get<1>(elem));
+                                    return HPX_INVOKE(f1, hpx::get<0>(elem),
+                                        hpx::get<1>(elem));
                                 },
                                 shape);
 
@@ -195,10 +191,11 @@ namespace hpx::parallel::util {
                             f1f3_exec,
                             [f3, workitems, shape = HPX_MOVE(shape), f3_offset](
                                 std::size_t idx) {
-                                auto it = std::next(
-                                    hpx::util::begin(shape), idx);
+                                auto it = 
+                                    std::next(hpx::util::begin(shape), idx);
                                 HPX_INVOKE(f3, hpx::get<0>(*it),
-                                    hpx::get<1>(*it), workitems[idx + f3_offset]);
+                                    hpx::get<1>(*it), 
+                                    workitems[idx + f3_offset]);
                             },
                             hpx::util::counting_shape<std::size_t>(size));
                     }
@@ -257,8 +254,7 @@ namespace hpx::parallel::util {
             template <typename ExPolicy_, typename FwdIter, typename T,
                 typename F1, typename F2, typename F3, typename F4>
             static hpx::future<R> call(ExPolicy_&& policy, FwdIter first,
-                std::size_t count, T&& init, F1&& f1, F2&& f2, F3&& f3,
-                F4&& f4)
+                std::size_t count, T&& init, F1&& f1, F2&& f2, F3&& f3, F4&& f4)
             {
                 return execution::async_execute(policy.executor(),
                     [first, count, policy, init = HPX_FORWARD(T, init),
