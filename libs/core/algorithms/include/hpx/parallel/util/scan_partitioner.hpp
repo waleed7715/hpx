@@ -112,9 +112,10 @@ namespace hpx::parallel::util {
                     auto const stackless_policy =
                         hpx::execution::experimental::with_stacksize(
                             hinted_policy,
-                            hpx::threads::thread_stacksize::small_);
+                            hpx::threads::thread_stacksize::nostack);
 
-                    auto const& f1f3_exec = stackless_policy.executor();
+                    auto const& f1_exec = stackless_policy.executor();
+                    auto const& f3_exec = hinted_policy.executor();
 
                     // If the size of count was enough to warrant testing for a
                     // chunk, pre-initialize second intermediate result and
@@ -130,7 +131,7 @@ namespace hpx::parallel::util {
                         workitems.reserve(size + 2);
                         finalitems.reserve(size + 1);
 
-                        finalitems.push_back(execution::async_execute(f1f3_exec,
+                        finalitems.push_back(execution::async_execute(f3_exec,
                             f3, first_, count_ - count, workitems[0]));
                     }
                     else
@@ -146,7 +147,7 @@ namespace hpx::parallel::util {
 #endif
                         auto bulk_results =
                             hpx::parallel::execution::bulk_sync_execute(
-                                f1f3_exec,
+                                f1_exec,
                                 [&f1](auto const& elem) {
                                     return HPX_INVOKE(f1, hpx::get<0>(elem),
                                         hpx::get<1>(elem));
@@ -187,7 +188,7 @@ namespace hpx::parallel::util {
 #endif
                         std::size_t const f3_offset = had_test_chunk ? 1 : 0;
                         hpx::parallel::execution::bulk_sync_execute(
-                            f1f3_exec,
+                            f3_exec,
                             [f3, workitems, shape = HPX_MOVE(shape), f3_offset](
                                 std::size_t idx) mutable {
                                 auto it =
