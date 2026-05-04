@@ -112,10 +112,10 @@ namespace hpx::parallel::util {
 
                     // Distributed execution requires a real stack because
                     // F1/F3 work may suspend (e.g. remote iterator access).
-                    auto const f1f3_stacksize =
-                        hpx::get_initial_num_localities() > 1
-                        ? hpx::threads::thread_stacksize::default_
-                        : hpx::threads::thread_stacksize::nostack;
+                     auto const f1f3_stacksize =
+                        hpx::get_initial_num_localities() > 1 ?
+                        hpx::threads::thread_stacksize::default_ :
+                        hpx::threads::thread_stacksize::nostack;
 
                     auto const f1f3_policy =
                         hpx::execution::experimental::with_stacksize(
