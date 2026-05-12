@@ -110,8 +110,6 @@ namespace hpx::parallel::util {
                             hpx::threads::thread_schedule_hint{hpx::threads::
                                     thread_placement_hint::depth_first});
 
-                    // Distributed execution requires a real stack because
-                    // F1/F3 work may suspend (e.g. remote iterator access).
                     auto const f1f3_stacksize =
                         hpx::get_initial_num_localities() > 1 ?
                         hpx::threads::thread_stacksize::default_ :
@@ -125,10 +123,7 @@ namespace hpx::parallel::util {
 
                     // If the size of count was enough to warrant testing for a
                     // chunk, pre-initialize second intermediate result and
-                    // start f3 for that test chunk immediately (its prefix is
-                    // simply init = workitems[0]).  workitems[1] is left as the
-                    // raw f1 result so the f2 sequential pass below sees it
-                    // exactly once.
+                    // start f3.
                     bool const had_test_chunk = (workitems.size() == 2);
                     if (had_test_chunk)
                     {
@@ -164,11 +159,7 @@ namespace hpx::parallel::util {
                             workitems.push_back(HPX_MOVE(result));
                     }
 
-                    // perform f2 sequentially in one go.
-                    // When a test chunk was used, workitems[1] already holds the
-                    // raw f1 result for that chunk; the loop processes it once
-                    // together with the rest, producing correct prefix sums in
-                    // workitems[1..N].
+                    // perform f2 sequentially in one go
                     {
 #if HPX_HAVE_ITTNOTIFY != 0 && !defined(HPX_HAVE_APEX)
                         static hpx::util::itt::event e("F2_START");
@@ -182,11 +173,7 @@ namespace hpx::parallel::util {
                         }
                     }
 
-                    // F3 return type is void.
-                    // When a test chunk was used, its f3 was already launched in
-                    // finalitems above.  The bulk below covers shape[0..size-1]
-                    // which correspond to workitems[f3_offset .. f3_offset+size-1]
-                    // (the prefix sums that precede each remaining chunk).
+                    // start all f3 tasks
                     {
 #if HPX_HAVE_ITTNOTIFY != 0 && !defined(HPX_HAVE_APEX)
                         static hpx::util::itt::event e("F3_START");

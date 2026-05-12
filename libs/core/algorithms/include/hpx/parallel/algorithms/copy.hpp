@@ -581,17 +581,23 @@ namespace hpx::parallel {
                     scan_partitioner_type;
 
                 auto f1 = [pred = HPX_FORWARD(Pred, pred),
-                              proj = HPX_FORWARD(decltype(proj), proj)](
-                              zip_iterator part_begin,
-                              std::size_t part_size) -> std::size_t {
+                            proj = HPX_FORWARD(decltype(proj), proj)](
+                            zip_iterator part_begin,
+                            std::size_t part_size) -> std::size_t {
+
+                #if HPX_HAVE_ITTNOTIFY != 0 && !defined(HPX_HAVE_APEX)
+                    static hpx::util::itt::domain f1_domain("copy_if");
+                    static hpx::util::itt::string_handle f1_handle("F1");
+                    hpx::util::itt::task f1_task(f1_domain, f1_handle);
+                #endif
+                    
                     std::size_t curr = 0;
 
                     // Note: replacing the invoke() with HPX_INVOKE()
                     // below makes gcc generate errors
 
                     // MSVC complains if proj is captured by ref below
-                    util::const_loop_n<std::decay_t<ExPolicy>>(part_begin,
-                        part_size,
+                    util::loop_n<std::decay_t<ExPolicy>>(part_begin, part_size,
                         [&pred, proj, &curr](zip_iterator it) mutable -> void {
                             bool f = hpx::invoke(
                                 pred, hpx::invoke(proj, get<0>(*it)));
@@ -603,12 +609,20 @@ namespace hpx::parallel {
 
                     return curr;
                 };
+
                 auto f3 = [dest, flags](zip_iterator part_begin,
                               std::size_t part_size, std::size_t val) mutable {
+
+                #if HPX_HAVE_ITTNOTIFY != 0 && !defined(HPX_HAVE_APEX)
+                    static hpx::util::itt::domain f3_domain("copy_if");
+                    static hpx::util::itt::string_handle f3_handle("F3");
+                    hpx::util::itt::task f3_task(f3_domain, f3_handle);
+                #endif
+
                     HPX_UNUSED(flags);
                     std::advance(dest, val);
-                    util::const_loop_n<std::decay_t<ExPolicy>>(part_begin,
-                        part_size, [&dest](zip_iterator it) mutable {
+                    util::loop_n<std::decay_t<ExPolicy>>(part_begin, part_size,
+                        [&dest](zip_iterator it) mutable {
                             if (get<1>(*it))
                                 *dest++ = get<0>(*it);
                         });
@@ -617,6 +631,13 @@ namespace hpx::parallel {
                 auto f4 = [first, dest, flags](std::vector<std::size_t>&& items,
                               std::vector<hpx::future<void>>&& data) mutable
                     -> util::in_out_result<FwdIter1, FwdIter3> {
+    
+                #if HPX_HAVE_ITTNOTIFY != 0 && !defined(HPX_HAVE_APEX)
+                    static hpx::util::itt::domain d("copy_if");
+                    static hpx::util::itt::string_handle h("F4");
+                    hpx::util::itt::task t(d, h);
+                #endif
+
                     HPX_UNUSED(flags);
 
                     auto dist = items.back();
@@ -790,7 +811,8 @@ namespace hpx {
                 >
             )
         // clang-format on
-        friend parallel::util::detail::algorithm_result_t<ExPolicy, FwdIter2>
+        friend typename hpx::parallel::util::detail::algorithm_result<ExPolicy,
+            FwdIter2>::type
         tag_fallback_invoke(hpx::copy_if_t, ExPolicy&& policy, FwdIter1 first,
             FwdIter1 last, FwdIter2 dest, Pred pred)
         {
