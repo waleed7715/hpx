@@ -294,6 +294,7 @@ add_hpx_module(
     hpx_memory
     hpx_pack_traversal
     hpx_properties
+    hpx_runtime_local
     hpx_serialization
     hpx_synchronization
     hpx_tag_invoke

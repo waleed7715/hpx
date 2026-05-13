@@ -31,8 +31,7 @@ namespace hpx::parallel::util::detail {
     void add_ready_future(
         std::vector<Future>& workitems, F&& f, FwdIter first, std::size_t count)
     {
-        workitems.push_back(
-            hpx::make_ready_future(HPX_FORWARD(F, f)(first, count)));
+        workitems.push_back(HPX_FORWARD(F, f)(first, count));
     }
 
     HPX_CXX_CORE_EXPORT template <typename F, typename FwdIter>
