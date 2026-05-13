@@ -161,7 +161,6 @@ namespace hpx::execution {
           , policy_(rhs.policy_)
           , first_core_(rhs.first_core_)
           , num_cores_(rhs.num_cores_)
-          , mask_(nullptr)    // force recomputing cached pu mask
 #if defined(HPX_HAVE_THREAD_DESCRIPTION)
           , annotation_(rhs.annotation_)
 #endif
@@ -178,7 +177,6 @@ namespace hpx::execution {
                 policy_ = rhs.policy_;
                 first_core_ = rhs.first_core_;
                 num_cores_ = rhs.num_cores_;
-                mask_ = nullptr;    // force recomputing cached pu mask
 
 #if defined(HPX_HAVE_THREAD_DESCRIPTION)
                 annotation_ = rhs.annotation_;
@@ -187,10 +185,7 @@ namespace hpx::execution {
             return *this;
         }
 
-        constexpr ~parallel_policy_executor_base()
-        {
-            delete mask_;
-        }
+        constexpr ~parallel_policy_executor_base() = default;
 
         // backwards compatibility support, will be removed in the future
         template <typename Parameters>
@@ -345,11 +340,6 @@ namespace hpx::execution {
 
         hpx::threads::mask_type pu_mask() const
         {
-            //if (mask_ != nullptr && hpx::threads::any(*mask_))
-            //{
-            //    return *mask_;
-            //}
-
             auto const num_threads = get_num_cores();
             auto const available_threads = static_cast<std::uint32_t>(
                 pool()->get_active_os_thread_count());
@@ -376,13 +366,6 @@ namespace hpx::execution {
                 }
             }
 
-            // `mask_` is conceptually mutable, however in order to constexpr
-            // construct this object we need to use a `const_cast` to cache
-            // the mask.
-
-            //*const_cast<hpx::threads::mask_type**>(&mask_) =
-            //    new hpx::threads::mask_type(mask);
-
             return mask;
         }
 
@@ -397,7 +380,6 @@ namespace hpx::execution {
         Policy policy_;
         std::size_t first_core_ = 0;
         std::size_t num_cores_ = 0;
-        hpx::threads::mask_type* mask_ = nullptr;
 #if defined(HPX_HAVE_THREAD_DESCRIPTION)
         char const* annotation_ = nullptr;
 #endif
@@ -728,7 +710,7 @@ namespace hpx::execution {
 
     ////////////////////////////////////////////////////////////////////////////
     // parallel executor that spawns threads hierarchically
-    HPX_CXX_CORE_EXPORT template <typename Policy>
+    template <typename Policy>
     struct parallel_policy_executor<Policy, true>
       : parallel_policy_executor_base<Policy>
     {
@@ -1174,35 +1156,35 @@ namespace hpx::execution {
 namespace hpx::execution::experimental {
 
     /// \cond NOINTERNAL
-    HPX_CXX_CORE_EXPORT template <typename Policy, bool HierarchicalSpawning>
+    template <typename Policy, bool HierarchicalSpawning>
     struct is_one_way_executor<
         hpx::execution::parallel_policy_executor<Policy, HierarchicalSpawning>>
       : std::true_type
     {
     };
 
-    HPX_CXX_CORE_EXPORT template <typename Policy, bool HierarchicalSpawning>
+    template <typename Policy, bool HierarchicalSpawning>
     struct is_never_blocking_one_way_executor<
         hpx::execution::parallel_policy_executor<Policy, HierarchicalSpawning>>
       : std::true_type
     {
     };
 
-    HPX_CXX_CORE_EXPORT template <typename Policy, bool HierarchicalSpawning>
+    template <typename Policy, bool HierarchicalSpawning>
     struct is_two_way_executor<
         hpx::execution::parallel_policy_executor<Policy, HierarchicalSpawning>>
       : std::true_type
     {
     };
 
-    HPX_CXX_CORE_EXPORT template <typename Policy, bool HierarchicalSpawning>
+    template <typename Policy, bool HierarchicalSpawning>
     struct is_bulk_one_way_executor<
         hpx::execution::parallel_policy_executor<Policy, HierarchicalSpawning>>
       : std::true_type
     {
     };
 
-    HPX_CXX_CORE_EXPORT template <typename Policy, bool HierarchicalSpawning>
+    template <typename Policy, bool HierarchicalSpawning>
     struct is_bulk_two_way_executor<
         hpx::execution::parallel_policy_executor<Policy, HierarchicalSpawning>>
       : std::true_type

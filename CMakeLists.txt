@@ -622,13 +622,6 @@ hpx_option(
 # ## HPX STDEXEC configuration ##
 
 hpx_option(
-  HPX_WITH_STDEXEC BOOL
-  "Use STDEXEC executors instead of native HPX.(default: OFF)" OFF
-  CATEGORY "Executor"
-  ADVANCED
-)
-
-hpx_option(
   HPX_WITH_FETCH_STDEXEC BOOL "Use FetchContent to fetch STDEXEC.(default: ON)"
   ON
   CATEGORY "Executor"
@@ -1213,6 +1206,26 @@ endif()
 if(HPX_WITH_APEX AND NOT HPX_WITH_DISTRIBUTED_RUNTIME)
   hpx_error("HPX_WITH_DISTRIBUTED_RUNTIME=OFF requires HPX_WITH_APEX=OFF")
 endif()
+
+set(_hpx_tracing_backends "")
+if(HPX_WITH_APEX)
+  list(APPEND _hpx_tracing_backends "HPX_WITH_APEX")
+endif()
+if(HPX_WITH_ITTNOTIFY)
+  list(APPEND _hpx_tracing_backends "HPX_WITH_ITTNOTIFY")
+endif()
+if(HPX_TRACY_WITH_TRACY)
+  list(APPEND _hpx_tracing_backends "HPX_TRACY_WITH_TRACY")
+endif()
+
+list(LENGTH _hpx_tracing_backends _hpx_tracing_backends_count)
+if(_hpx_tracing_backends_count GREATER 1)
+  hpx_error(
+    "Only one tracing backend can be active. Disable all but one of: HPX_WITH_APEX, HPX_WITH_ITTNOTIFY, HPX_TRACY_WITH_TRACY."
+  )
+endif()
+unset(_hpx_tracing_backends)
+unset(_hpx_tracing_backends_count)
 
 if(HPX_WITH_NETWORKING)
   hpx_add_config_define(HPX_HAVE_NETWORKING)
@@ -2064,6 +2077,13 @@ if(WIN32)
 
       # Make sure that __cplusplus is properly defined
       hpx_add_target_compile_option(-Zc:__cplusplus PUBLIC)
+
+      # stdexec requires the conforming MSVC preprocessor.
+      if(NOT (${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang"
+              AND "x${CMAKE_CXX_SIMULATE_ID}" STREQUAL "xMSVC")
+      )
+        hpx_add_target_compile_option(-Zc:preprocessor PUBLIC)
+      endif()
 
       # Silence C++17 deprecation warnings
       hpx_add_config_cond_define(_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS)

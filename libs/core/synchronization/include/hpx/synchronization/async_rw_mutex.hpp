@@ -158,7 +158,7 @@ namespace hpx::experimental {
             async_rw_mutex_access_type AccessType>
         struct async_rw_mutex_access_wrapper;
 
-        HPX_CXX_CORE_EXPORT template <typename ReadWriteT, typename ReadT>
+        template <typename ReadWriteT, typename ReadT>
         struct async_rw_mutex_access_wrapper<ReadWriteT, ReadT,
             async_rw_mutex_access_type::read>
         {
@@ -197,7 +197,7 @@ namespace hpx::experimental {
             }
         };
 
-        HPX_CXX_CORE_EXPORT template <typename ReadWriteT, typename ReadT>
+        template <typename ReadWriteT, typename ReadT>
         struct async_rw_mutex_access_wrapper<ReadWriteT, ReadT,
             async_rw_mutex_access_type::readwrite>
         {
@@ -357,7 +357,7 @@ namespace hpx::experimental {
     // The protected value is moved from state to state and is released when the
     // last shared state is destroyed.
 
-    HPX_CXX_CORE_EXPORT template <typename Allocator>
+    template <typename Allocator>
     class async_rw_mutex<void, void, Allocator>
     {
     private:
@@ -437,7 +437,6 @@ namespace hpx::experimental {
             using access_type =
                 detail::async_rw_mutex_access_wrapper<readwrite_type, read_type,
                     AccessType>;
-#if defined(HPX_HAVE_STDEXEC)
             using sender_concept = hpx::execution::experimental::sender_t;
 
             template <typename Env>
@@ -448,25 +447,6 @@ namespace hpx::experimental {
                     hpx::execution::experimental::set_value_t(access_type),
                     hpx::execution::experimental::set_error_t(
                         std::exception_ptr)>;
-#else
-            template <typename Env>
-            struct generate_completion_signatures
-            {
-                template <template <typename...> typename Tuple,
-                    template <typename...> typename Variant>
-                using value_types = Variant<Tuple<access_type>>;
-
-                template <template <typename...> typename Variant>
-                using error_types = Variant<std::exception_ptr>;
-
-                static constexpr bool sends_stopped = false;
-            };
-
-            template <typename Env>
-            friend auto tag_invoke(
-                hpx::execution::experimental::get_completion_signatures_t,
-                sender const&, Env) -> generate_completion_signatures<Env>;
-#endif
 
             template <typename R>
             struct operation_state
@@ -653,7 +633,6 @@ namespace hpx::experimental {
                 detail::async_rw_mutex_access_wrapper<readwrite_type, read_type,
                     AccessType>;
 
-#if defined(HPX_HAVE_STDEXEC)
             using sender_concept = hpx::execution::experimental::sender_t;
 
             template <typename Env>
@@ -664,25 +643,6 @@ namespace hpx::experimental {
                     hpx::execution::experimental::set_value_t(access_type),
                     hpx::execution::experimental::set_error_t(
                         std::exception_ptr)>;
-#else
-            template <typename Env>
-            struct generate_completion_signatures
-            {
-                template <template <typename...> typename Tuple,
-                    template <typename...> typename Variant>
-                using value_types = Variant<Tuple<access_type>>;
-
-                template <template <typename...> typename Variant>
-                using error_types = Variant<std::exception_ptr>;
-
-                static constexpr bool sends_stopped = false;
-            };
-
-            template <typename Env>
-            friend auto tag_invoke(
-                hpx::execution::experimental::get_completion_signatures_t,
-                sender const&, Env) -> generate_completion_signatures<Env>;
-#endif
 
             template <typename R>
             struct operation_state
