@@ -1,5 +1,5 @@
 //  Copyright (c) 2016 Thomas Heller
-//  Copyright (c) 2022 Hartmut Kaiser
+//  Copyright (c) 2022-2026 Hartmut Kaiser
 //
 //  SPDX-License-Identifier: BSL-1.0
 //  Distributed under the Boost Software License, Version 1.0. (See accompanying
@@ -22,9 +22,7 @@
 #include <hpx/async_distributed/put_parcel_fwd.hpp>
 #include <hpx/async_distributed/transfer_continuation_action.hpp>
 #include <hpx/modules/actions.hpp>
-#include <hpx/parcelset/parcel.hpp>
-#include <hpx/parcelset/parcelhandler.hpp>
-#include <hpx/parcelset/parcelset_fwd.hpp>
+#include <hpx/modules/parcelset.hpp>
 
 #include <cstddef>
 #include <memory>
@@ -172,7 +170,7 @@ namespace hpx::parcelset {
         };
     }    // namespace detail
 
-    template <typename... Args>
+    HPX_CXX_EXPORT template <typename... Args>
     void put_parcel(
         hpx::id_type const& dest, naming::address&& addr, Args&&... args)
     {
@@ -181,7 +179,7 @@ namespace hpx::parcelset {
             detail::make_parcel_action(HPX_FORWARD(Args, args)...));
     }
 
-    template <typename Callback, typename... Args>
+    HPX_CXX_EXPORT template <typename Callback, typename... Args>
     void put_parcel_cb(Callback&& cb, hpx::id_type const& dest,
         naming::address&& addr, Args&&... args)
     {

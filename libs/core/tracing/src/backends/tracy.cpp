@@ -5,11 +5,14 @@
 //  Distributed under the Boost Software License, Version 1.0. (See accompanying
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
+#include <hpx/config.hpp>
+
+#if defined(HPX_HAVE_TRACY)
+
 #include <hpx/tracing/tracing.hpp>
 
 #include <cstddef>
-
-#if defined(HPX_HAVE_MODULE_TRACY)
+#include <string>
 
 namespace hpx::tracing {
 
@@ -78,6 +81,48 @@ namespace hpx::tracing {
     fiber_suspend_region::~fiber_suspend_region() = default;
 
     ////////////////////////////////////////////////////////////////////////////
+    // lock_context
+
+    lock_context::lock_context(
+        char const* name, void const* /* addr */) noexcept
+      : impl(hpx::tracy::create(name))
+    {
+    }
+
+    lock_context::lock_context(
+        char const* prefix, char const* suffix, void const* /* addr */) noexcept
+      : impl(hpx::tracy::create(std::string(prefix) + suffix))
+    {
+    }
+
+    lock_context::~lock_context()
+    {
+        hpx::tracy::destroy(impl);
+    }
+
+    bool lock_context::before_lock() const noexcept
+    {
+        return hpx::tracy::lock_prepare(impl);
+    }
+
+    void lock_context::after_lock() const noexcept
+    {
+        hpx::tracy::lock_acquired(impl);
+    }
+
+    void lock_context::after_try_lock(bool acquired) const noexcept
+    {
+        hpx::tracy::lock_acquired(impl, acquired);
+    }
+
+    void lock_context::before_unlock() const noexcept {}
+
+    void lock_context::after_unlock() const noexcept
+    {
+        hpx::tracy::lock_released(impl);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
     // set_thread_name
 
     void set_thread_name(char const* name) noexcept
@@ -93,53 +138,20 @@ namespace hpx::tracing {
         return hpx::tracy::detail::rename_region(name);
     }
 
-}    // namespace hpx::tracing
-
-#elif defined(HPX_HAVE_ITTNOTIFY) && HPX_HAVE_ITTNOTIFY != 0
-
-namespace hpx::tracing {
-
     ////////////////////////////////////////////////////////////////////////////
-    // loop_context
+    // counters
 
-    loop_context::loop_context() noexcept
-      : task_id("task_id")
-      , task_phase("task_phase")
+    void create_counter(
+        std::string const&, std::string const& short_name) noexcept
     {
+        hpx::tracy::create_counter(short_name);
     }
 
-    loop_context::~loop_context() = default;
-
-    ////////////////////////////////////////////////////////////////////////////
-    // region
-
-    util::itt::task region::make_task(
-        loop_context& ctx, region_init_data const& data)
+    void sample_counter(std::string const&, std::string const& short_name,
+        double value) noexcept
     {
-        if (data.is_address_type)
-        {
-            return util::itt::task(ctx.thread_domain,
-                util::itt::string_handle("address"), data.address);
-        }
-        if (data.itt_string_handle != nullptr)
-        {
-            return util::itt::task(ctx.thread_domain,
-                util::itt::string_handle(static_cast<___itt_string_handle*>(
-                    data.itt_string_handle)));
-        }
-        return util::itt::task(
-            ctx.thread_domain, util::itt::string_handle(data.name));
+        hpx::tracy::sample_value(short_name, value);
     }
-
-    region::region(loop_context& ctx, region_init_data const& data, std::size_t)
-      : cctx(ctx.stack_ctx, !data.is_stackless)
-      , task(make_task(ctx, data))
-    {
-        task.add_metadata(ctx.task_id, data.thread_ptr);
-        task.add_metadata(ctx.task_phase, data.thread_phase);
-    }
-
-    region::~region() = default;
 
 }    // namespace hpx::tracing
 

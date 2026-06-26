@@ -100,7 +100,7 @@ endif()
 if(HPX_LIKWID_WITH_LIKWID)
   set(additional_dependencies ${additional_dependencies} hpx_likwid)
 endif()
-if(HPX_TRACY_WITH_TRACY)
+if(HPX_WITH_TRACY)
   set(additional_dependencies ${additional_dependencies} hpx_tracy)
 endif()
 
@@ -136,7 +136,6 @@ add_hpx_module(
     hpx_format
     hpx_functional
     hpx_hardware
-    hpx_itt_notify
     hpx_lock_registration
     hpx_logging
     hpx_memory

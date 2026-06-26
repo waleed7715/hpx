@@ -9,34 +9,27 @@
 
 #if defined(HPX_HAVE_DISTRIBUTED_RUNTIME)
 
-#include <hpx/agas/addressing_service.hpp>
-#include <hpx/collectives/barrier.hpp>
-#include <hpx/collectives/channel_communicator.hpp>
-#include <hpx/collectives/create_communicator.hpp>
-#include <hpx/collectives/latch.hpp>
-#include <hpx/init_runtime/pre_main.hpp>
+#include <hpx/modules/agas.hpp>
+#include <hpx/modules/collectives.hpp>
 #include <hpx/modules/components_base.hpp>
 #include <hpx/modules/datastructures.hpp>
 #include <hpx/modules/errors.hpp>
 #include <hpx/modules/logging.hpp>
+#include <hpx/modules/parcelset.hpp>
+#include <hpx/modules/performance_counters.hpp>
+#include <hpx/modules/runtime_components.hpp>
 #include <hpx/modules/runtime_configuration.hpp>
+#include <hpx/modules/runtime_distributed.hpp>
 #include <hpx/modules/runtime_local.hpp>
-#include <hpx/parcelset/message_handler_fwd.hpp>
-#include <hpx/performance_counters/agas_counter_types.hpp>
-#include <hpx/performance_counters/parcelhandler_counter_types.hpp>
-#include <hpx/performance_counters/threadmanager_counter_types.hpp>
-#include <hpx/runtime_components/console_logging.hpp>
-#include <hpx/runtime_distributed.hpp>
-#include <hpx/runtime_distributed/applier.hpp>
-#include <hpx/runtime_distributed/runtime_fwd.hpp>
-#include <hpx/runtime_distributed/runtime_support.hpp>
+
+#include <hpx/init_runtime/pre_main.hpp>
 
 #include <string>
 #include <vector>
 
 #include <hpx/config/warnings_prefix.hpp>
 
-namespace hpx { namespace detail {
+namespace hpx::detail {
 
     static void garbage_collect_non_blocking()
     {
@@ -262,6 +255,6 @@ namespace hpx { namespace detail {
         hpx::distributed::barrier::get_global_barrier().detach();
 #endif
     }
-}}    // namespace hpx::detail
+}    // namespace hpx::detail
 
 #endif

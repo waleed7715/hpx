@@ -26,12 +26,16 @@ set(executors_headers
     hpx/executors/execution_policy_parameters.hpp
     hpx/executors/execution_policy_scheduling_property.hpp
     hpx/executors/execution_policy.hpp
+    hpx/executors/executor_scheduler.hpp
+    hpx/executors/executor_scheduler_bulk.hpp
     hpx/executors/explicit_scheduler_executor.hpp
     hpx/executors/fork_join_executor.hpp
     hpx/executors/limiting_executor.hpp
     hpx/executors/macros.hpp
     hpx/executors/parallel_executor_aggregated.hpp
     hpx/executors/parallel_executor.hpp
+    hpx/executors/parallel_scheduler.hpp
+    hpx/executors/parallel_scheduler_backend.hpp
     hpx/executors/post.hpp
     hpx/executors/restricted_thread_pool_executor.hpp
     hpx/executors/scheduler_executor.hpp
@@ -48,7 +52,10 @@ set(executors_macro_headers hpx/executors/macros.hpp)
 
 if(HPX_WITH_DATAPAR)
   set(executors_headers
-      ${executors_headers} hpx/executors/datapar/execution_policy_fwd.hpp
+      ${executors_headers}
+      hpx/executors/datapar/detail/execution_policy_mapping_members.hpp
+      hpx/executors/datapar/detail/execution_policy_mapping_members_impl.hpp
+      hpx/executors/datapar/execution_policy_fwd.hpp
       hpx/executors/datapar/execution_policy_mappings.hpp
       hpx/executors/datapar/execution_policy.hpp
   )
@@ -93,8 +100,9 @@ if(HPX_WITH_DATAPAR)
 endif()
 # cmake-format: on
 
-set(executors_sources current_executor.cpp exception_list_callbacks.cpp
-                      fork_join_executor.cpp service_executors.cpp
+set(executors_sources
+    current_executor.cpp exception_list_callbacks.cpp fork_join_executor.cpp
+    parallel_scheduler.cpp service_executors.cpp
 )
 
 include(HPX_AddModule)
@@ -125,7 +133,6 @@ add_hpx_module(
     hpx_hardware
     hpx_io_service
     hpx_iterator_support
-    hpx_itt_notify
     hpx_memory
     hpx_pack_traversal
     hpx_properties

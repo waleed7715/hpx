@@ -744,6 +744,7 @@ namespace hpx { namespace experimental {
 #include <hpx/modules/iterator_support.hpp>
 #include <hpx/modules/tag_invoke.hpp>
 #include <hpx/modules/threading_base.hpp>
+#include <hpx/modules/tracing.hpp>
 #include <hpx/modules/type_support.hpp>
 #include <hpx/parallel/algorithms/detail/dispatch.hpp>
 #include <hpx/parallel/algorithms/for_loop_induction.hpp>
@@ -1215,11 +1216,10 @@ namespace hpx::parallel {
                     if constexpr (hpx::is_async_execution_policy_v<ExPolicy> ||
                         is_scheduler_policy)
                     {
-                        return util::detail::algorithm_result<ExPolicy>::get(
-                            util::partitioner<ExPolicy>::call(
-                                HPX_FORWARD(ExPolicy, policy), iter_or_r, size,
-                                part_iterations<ExPolicy, F>{HPX_FORWARD(F, f)},
-                                hpx::util::empty_function{}));
+                        return util::call_with_algorithm_result<ExPolicy>(
+                            HPX_FORWARD(ExPolicy, policy), iter_or_r, size,
+                            part_iterations<ExPolicy, F>{HPX_FORWARD(F, f)},
+                            hpx::util::empty_function{});
                     }
                     else
                     {
@@ -1869,20 +1869,18 @@ namespace hpx::traits {
         }
     };
 
-#if HPX_HAVE_ITTNOTIFY != 0 && !defined(HPX_HAVE_APEX)
     HPX_CXX_CORE_EXPORT template <typename ExPolicy, typename F, typename S,
         typename Tuple>
-    struct get_function_annotation_itt<
+    struct get_function_annotation_tracing<
         hpx::parallel::detail::part_iterations<ExPolicy, F, S, Tuple>>
     {
-        static util::itt::string_handle call(
+        static hpx::tracing::annotation_handle call(
             hpx::parallel::detail::part_iterations<ExPolicy, F, S, Tuple> const&
                 f) noexcept
         {
-            return get_function_annotation_itt<std::decay_t<F>>::call(f.f_);
+            return get_function_annotation_tracing<std::decay_t<F>>::call(f.f_);
         }
     };
-#endif
 }    // namespace hpx::traits
 #endif
 #endif

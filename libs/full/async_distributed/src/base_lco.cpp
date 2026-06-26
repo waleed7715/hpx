@@ -1,21 +1,23 @@
-//  Copyright (c) 2007-2021 Hartmut Kaiser
+//  Copyright (c) 2007-2026 Hartmut Kaiser
 //  Copyright (c)      2011 Bryce Lelbach
 //
 //  SPDX-License-Identifier: BSL-1.0
 //  Distributed under the Boost Software License, Version 1.0. (See accompanying
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
-#include <hpx/async_distributed/base_lco.hpp>
-#include <hpx/async_distributed/transfer_continuation_action.hpp>
 #include <hpx/modules/actions.hpp>
 #include <hpx/modules/actions_base.hpp>
 #include <hpx/modules/components_base.hpp>
 #include <hpx/modules/naming_base.hpp>
 
+#include <hpx/async_distributed/base_lco.hpp>
+#include <hpx/async_distributed/macros.hpp>
+#include <hpx/async_distributed/transfer_continuation_action.hpp>
+
 #include <cstddef>
 #include <exception>
 
-namespace hpx { namespace lcos {
+namespace hpx::lcos {
 
     void base_lco::set_exception(std::exception_ptr const& e)
     {
@@ -57,7 +59,7 @@ namespace hpx { namespace lcos {
     {
         disconnect(id);
     }
-}}    // namespace hpx::lcos
+}    // namespace hpx::lcos
 
 ///////////////////////////////////////////////////////////////////////////////
 HPX_ACTION_USES_MESSAGE_COALESCING_NOTHROW_DEFINITION(

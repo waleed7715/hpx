@@ -6,6 +6,7 @@
 
 set(tests
     algorithm_as_sender
+    algorithm_as_sender_with_scheduler
     algorithm_bulk
     algorithm_continues_on
     algorithm_ensure_started
@@ -38,6 +39,7 @@ set(tests
     minimal_async_executor
     minimal_sync_executor
     persistent_executor_parameters
+    query_get_allocator
     rebind_executor_parameters
 )
 

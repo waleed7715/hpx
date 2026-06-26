@@ -42,7 +42,9 @@ if(NOT ${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD" AND NOT HPX_WITH_STATIC_LINKING)
   set(example_programs ${example_programs} init_globally)
 endif()
 
-if(NOT (MSVC AND HPX_WITH_CXX_MODULES))
+if(NOT ((MSVC OR CMAKE_CXX_COMPILER_ID MATCHES "Clang") AND HPX_WITH_CXX_MODULES
+       )
+)
   list(APPEND example_programs sender_diamond)
 endif()
 
@@ -188,3 +190,25 @@ foreach(example_program ${example_programs})
     )
   endif()
 endforeach()
+
+if(HPX_WITH_CXX_MODULES
+   AND (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+   AND (NOT (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 1952))
+)
+  foreach(
+    example
+    barrier_docs
+    customize_async
+    component_ctors
+    component_in_executable
+    component_with_executor
+    custom_serialization
+    enumerate_threads
+    hello_world_distributed
+    latch_remote
+    latch_local
+    mutex_docs
+  )
+    target_compile_definitions(${example} PRIVATE HPX_HAVE_FORCE_NO_CXX_MODULES)
+  endforeach()
+endif()

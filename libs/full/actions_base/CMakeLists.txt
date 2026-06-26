@@ -19,6 +19,7 @@ set(actions_base_headers
     hpx/actions_base/basic_action.hpp
     hpx/actions_base/basic_action_fwd.hpp
     hpx/actions_base/component_action.hpp
+    hpx/actions_base/reflect_action.hpp
     hpx/actions_base/detail/action_factory.hpp
     hpx/actions_base/detail/invocation_count_registry.hpp
     hpx/actions_base/detail/per_action_data_counter_registry.hpp
@@ -43,7 +44,6 @@ set(actions_base_headers
     hpx/actions_base/traits/is_distribution_policy.hpp
     hpx/actions_base/traits/is_valid_action.hpp
 )
-
 set(actions_base_macro_headers hpx/actions_base/macros.hpp)
 
 # Default location is $HPX_ROOT/libs/actions_base/include_compatibility
@@ -86,6 +86,7 @@ set(actions_base_sources
 )
 
 include(HPX_AddModule)
+
 add_hpx_module(
   full actions_base
   GLOBAL_HEADER_GEN ON

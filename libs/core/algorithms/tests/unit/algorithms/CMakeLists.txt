@@ -265,7 +265,19 @@ foreach(test ${tests})
 endforeach()
 
 if(HPX_WITH_CXX_MODULES AND (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
-  foreach(test copyn_sender generate_sender min_element_sender)
+  foreach(
+    test
+    all_of_sender
+    any_of_sender
+    copyn_sender
+    findifnot_sender
+    generate_sender
+    is_sorted_sender
+    min_element_sender
+    none_of_sender
+    reverse_copy_sender
+    transform_sender
+  )
     target_compile_definitions(
       ${test}_test PRIVATE HPX_HAVE_FORCE_NO_CXX_MODULES
     )

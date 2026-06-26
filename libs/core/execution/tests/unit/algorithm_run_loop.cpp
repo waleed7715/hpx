@@ -1330,6 +1330,183 @@ void test_let_error()
     }
 }
 
+void test_let_stopped()
+{
+    // just_stopped -> let_stopped recovers with void on the scheduler
+    {
+        ex::run_loop loop;
+        auto t = hpx::thread([&] { loop.run(); });
+        [[maybe_unused]] auto sched = loop.get_scheduler();
+
+        std::atomic<bool> let_stopped_called{false};
+        tt::sync_wait(
+            ex::just_stopped() | ex::let_stopped([=, &let_stopped_called]() {
+                let_stopped_called = true;
+                return ex::schedule(sched) | ex::then([]() {});
+            }));
+        HPX_TEST(let_stopped_called);
+        loop.finish();
+        t.join();
+    }
+
+    // just_stopped -> let_stopped recovers with a value
+    {
+        ex::run_loop loop;
+        auto t = hpx::thread([&] { loop.run(); });
+        [[maybe_unused]] auto sched = loop.get_scheduler();
+
+        std::atomic<bool> let_stopped_called{false};
+        auto result = hpx::get<0>(*tt::sync_wait(
+            ex::just_stopped() | ex::let_stopped([&let_stopped_called]() {
+                let_stopped_called = true;
+                return ex::just(42);
+            })));
+        HPX_TEST(let_stopped_called);
+        HPX_TEST_EQ(result, 42);
+        loop.finish();
+        t.join();
+    }
+
+    // just_stopped -> let_stopped with continues_on to a scheduler
+    {
+        ex::run_loop loop;
+        auto t = hpx::thread([&] { loop.run(); });
+        [[maybe_unused]] auto sched = loop.get_scheduler();
+
+        std::atomic<bool> let_stopped_called{false};
+        auto result = hpx::get<0>(*tt::sync_wait(
+            ex::just_stopped() | ex::let_stopped([=, &let_stopped_called]() {
+                let_stopped_called = true;
+                return ex::just(42) | ex::continues_on(sched);
+            })));
+        HPX_TEST(let_stopped_called);
+        HPX_TEST_EQ(result, 42);
+        loop.finish();
+        t.join();
+    }
+
+    // schedule(sched) -> stopped_as_optional -> let_stopped: stopped propagates
+    // through the run_loop scheduler
+    {
+        ex::run_loop loop;
+        auto t = hpx::thread([&] { loop.run(); });
+        [[maybe_unused]] auto sched = loop.get_scheduler();
+
+        std::atomic<bool> let_stopped_called{false};
+        auto result = hpx::get<0>(*tt::sync_wait(
+            ex::just_stopped() | ex::let_stopped([=, &let_stopped_called]() {
+                let_stopped_called = true;
+                return ex::schedule(sched) | ex::then([]() { return 99; });
+            })));
+        HPX_TEST(let_stopped_called);
+        HPX_TEST_EQ(result, 99);
+        loop.finish();
+        t.join();
+    }
+
+    // non-stopped predecessor: let_stopped callback is NOT called
+    {
+        ex::run_loop loop;
+        auto t = hpx::thread([&] { loop.run(); });
+        [[maybe_unused]] auto sched = loop.get_scheduler();
+
+        auto result = hpx::get<0>(*tt::sync_wait(
+            ex::just(42) | ex::continues_on(sched) | ex::let_stopped([]() {
+                HPX_TEST(false);
+                return ex::just(0);
+            })));
+        HPX_TEST_EQ(result, 42);
+        loop.finish();
+        t.join();
+    }
+
+    {
+        ex::run_loop loop;
+        auto t = hpx::thread([&] { loop.run(); });
+        [[maybe_unused]] auto sched = loop.get_scheduler();
+
+        auto result = hpx::get<0>(*tt::sync_wait(
+            ex::just(42) | ex::continues_on(sched) | ex::let_stopped([=]() {
+                HPX_TEST(false);
+                return ex::just(0) | ex::continues_on(sched);
+            })));
+        HPX_TEST_EQ(result, 42);
+        loop.finish();
+        t.join();
+    }
+}
+
+void test_upon_stopped()
+{
+    // just_stopped -> upon_stopped recovers with void
+    {
+        ex::run_loop loop;
+        auto t = hpx::thread([&] { loop.run(); });
+        [[maybe_unused]] auto sched = loop.get_scheduler();
+
+        std::atomic<bool> upon_stopped_called{false};
+        tt::sync_wait(ex::just_stopped() |
+            ex::upon_stopped(
+                [&upon_stopped_called]() { upon_stopped_called = true; }));
+        HPX_TEST(upon_stopped_called);
+        loop.finish();
+        t.join();
+    }
+
+    // just_stopped -> upon_stopped with value recovery through run_loop
+    {
+        ex::run_loop loop;
+        auto t = hpx::thread([&] { loop.run(); });
+        [[maybe_unused]] auto sched = loop.get_scheduler();
+
+        std::atomic<bool> upon_stopped_called{false};
+        auto result = hpx::get<0>(*tt::sync_wait(
+            ex::just_stopped() | ex::upon_stopped([&upon_stopped_called]() {
+                upon_stopped_called = true;
+                return 42;
+            })));
+        HPX_TEST(upon_stopped_called);
+        HPX_TEST_EQ(result, 42);
+        loop.finish();
+        t.join();
+    }
+
+    // upon_stopped chained after continues_on
+    {
+        ex::run_loop loop;
+        auto t = hpx::thread([&] { loop.run(); });
+        [[maybe_unused]] auto sched = loop.get_scheduler();
+
+        std::atomic<bool> upon_stopped_called{false};
+        auto result = hpx::get<0>(*tt::sync_wait(ex::just_stopped() |
+            ex::upon_stopped([&upon_stopped_called]() {
+                upon_stopped_called = true;
+                return 99;
+            }) |
+            ex::continues_on(sched) | ex::then([](int x) { return x + 1; })));
+        HPX_TEST(upon_stopped_called);
+        HPX_TEST_EQ(result, 100);
+        loop.finish();
+        t.join();
+    }
+
+    // non-stopped predecessor: upon_stopped callback is NOT called
+    {
+        ex::run_loop loop;
+        auto t = hpx::thread([&] { loop.run(); });
+        [[maybe_unused]] auto sched = loop.get_scheduler();
+
+        auto result = hpx::get<0>(*tt::sync_wait(
+            ex::just(42) | ex::continues_on(sched) | ex::upon_stopped([]() {
+                HPX_TEST(false);
+                return 0;
+            })));
+        HPX_TEST_EQ(result, 42);
+        loop.finish();
+        t.join();
+    }
+}
+
 void test_detach()
 {
     {
@@ -1385,7 +1562,15 @@ void test_detach()
 
 void test_keep_future_sender()
 {
-    // the future should be passed to then, not it's contained value
+    // the future should be passed to then, not its contained value
+    {
+        auto sender = ex::keep_future(hpx::make_ready_future<void>());
+        static_assert(ex::is_sender_v<decltype(sender)>);
+        static_assert(
+            std::is_same_v<decltype(ex::get_env(sender)), ex::empty_env>);
+    }
+
+    // the future should be passed to then, not its contained value
     {
         ex::run_loop loop;
         auto t = hpx::thread([&] { loop.run(); });
@@ -1830,6 +2015,86 @@ void test_completion_scheduler()
     loop.run();
 }
 
+// Regression test for the run_loop -> sync_wait_domain integration:
+// verify that the P3826R5 resolution chain
+//
+//     sender env -> get_completion_scheduler<set_value_t>
+//                -> run_loop_scheduler
+//                -> get_completion_domain<set_value_t>
+//                -> detail::sync_wait_domain
+//
+// terminates at detail::sync_wait_domain. With this in place,
+// stdexec::sync_wait on a run_loop-scheduled sender dispatches through
+// HPX's cooperative apply_sender(sync_wait_t) instead of default_domain's
+// OS-blocking wait. Checks are static_asserts so a regression fails the
+// build rather than a runtime test.
+void test_completion_domain()
+{
+    using sync_wait_domain =
+        hpx::execution::experimental::detail::sync_wait_domain;
+
+    ex::run_loop loop;
+    [[maybe_unused]] auto sched = loop.get_scheduler();
+
+    // 1. Direct: the env returned by run_loop_sender.get_env() exposes
+    //    get_completion_domain<set_value_t> -> sync_wait_domain.
+    {
+        auto sender = ex::schedule(sched);
+        auto env = ex::get_env(sender);
+        using domain_t =
+            std::decay_t<decltype(ex::get_completion_domain<ex::set_value_t>(
+                env))>;
+        static_assert(std::is_same_v<domain_t, sync_wait_domain>,
+            "run_loop env's get_completion_domain<set_value_t> should "
+            "resolve to detail::sync_wait_domain");
+    }
+
+    // 2. set_stopped_t resolves the same way (templated query covers all
+    //    CPOs the env recognises).
+    {
+        auto sender = ex::schedule(sched);
+        auto env = ex::get_env(sender);
+        using domain_t =
+            std::decay_t<decltype(ex::get_completion_domain<ex::set_stopped_t>(
+                env))>;
+        static_assert(std::is_same_v<domain_t, sync_wait_domain>,
+            "run_loop env's get_completion_domain<set_stopped_t> should "
+            "resolve to detail::sync_wait_domain");
+    }
+
+    // 3. Full P3826R5 chain through the scheduler: from a sender's env,
+    //    get_completion_scheduler<set_value_t> -> run_loop_scheduler,
+    //    then on that scheduler get_completion_domain<set_value_t>
+    //    -> sync_wait_domain. This is the path stdexec::sync_wait walks.
+    {
+        auto sender = ex::schedule(sched);
+        auto completion_scheduler =
+            ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(sender));
+        using domain_t =
+            std::decay_t<decltype(ex::get_completion_domain<ex::set_value_t>(
+                completion_scheduler))>;
+        static_assert(std::is_same_v<domain_t, sync_wait_domain>,
+            "run_loop_scheduler's get_completion_domain<set_value_t> should "
+            "resolve to detail::sync_wait_domain");
+    }
+
+    // 4. Same chain on a composed sender (just | continues_on(sched)).
+    {
+        auto sender = ex::just(42) | ex::continues_on(sched);
+        auto completion_scheduler =
+            ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(sender));
+        using domain_t =
+            std::decay_t<decltype(ex::get_completion_domain<ex::set_value_t>(
+                completion_scheduler))>;
+        static_assert(std::is_same_v<domain_t, sync_wait_domain>,
+            "composed-sender completion_scheduler should still resolve "
+            "get_completion_domain<set_value_t> to detail::sync_wait_domain");
+    }
+
+    loop.finish();
+    loop.run();
+}
+
 void do_run_test(void (*func)(), char const* func_name)
 {
     std::cout << func_name << "\n";
@@ -1863,10 +2128,13 @@ int hpx_main()
     RUN_TEST(test_split_when_all);
     RUN_TEST(test_let_value);
     RUN_TEST(test_let_error);
+    RUN_TEST(test_let_stopped);
+    RUN_TEST(test_upon_stopped);
     RUN_TEST(test_detach);
     RUN_TEST(test_bulk);
 
     RUN_TEST(test_completion_scheduler);
+    RUN_TEST(test_completion_domain);
 
     return hpx::local::finalize();
 }

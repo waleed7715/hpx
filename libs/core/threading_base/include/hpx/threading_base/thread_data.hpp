@@ -21,9 +21,6 @@
 #include <hpx/threading_base/thread_description.hpp>
 #include <hpx/threading_base/thread_init_data.hpp>
 #include <hpx/threading_base/threading_base_fwd.hpp>
-#if defined(HPX_HAVE_APEX)
-#include <hpx/threading_base/external_timer.hpp>
-#endif
 
 #include <atomic>
 #include <cstddef>
@@ -288,7 +285,7 @@ namespace hpx::threads {
             threads::thread_description value);
 #endif
 
-#if defined(HPX_HAVE_MODULE_TRACY)
+#if defined(HPX_HAVE_TRACY)
     private:
         mutable char tracy_fiber_name_[64];
 
@@ -578,18 +575,14 @@ namespace hpx::threads {
         virtual void init() = 0;
         virtual void rebind(thread_init_data& init_data) = 0;
 
-#if defined(HPX_HAVE_APEX)
-        std::shared_ptr<util::external_timer::task_wrapper> get_timer_data()
-            const noexcept
+        hpx::tracing::task_timer_data get_timer_data() const noexcept
         {
-            return timer_data_;
+            return this->timer_data_;
         }
-        void set_timer_data(
-            std::shared_ptr<util::external_timer::task_wrapper> data) noexcept
+        void set_timer_data(hpx::tracing::task_timer_data data) noexcept
         {
-            timer_data_ = data;
+            this->timer_data_ = HPX_MOVE(data);
         }
-#endif
 
         // Construct a new \a thread
         thread_data(thread_init_data& init_data, void* queue,
@@ -616,6 +609,7 @@ namespace hpx::threads {
         std::uint16_t last_worker_thread_num_;
 
         thread_stacksize stacksize_enum_;
+        HPX_NO_UNIQUE_ADDRESS hpx::tracing::task_timer_data timer_data_;
         std::int32_t stacksize_;
 
         mutable std::atomic<thread_state> current_state_;
@@ -652,11 +646,6 @@ namespace hpx::threads {
         util::backtrace const* backtrace_ = nullptr;
 #endif
 #endif
-
-    public:
-#if defined(HPX_HAVE_APEX)
-        std::shared_ptr<util::external_timer::task_wrapper> timer_data_;
-#endif
     };
 
     HPX_CXX_CORE_EXPORT HPX_FORCEINLINE constexpr thread_data*
@@ -671,7 +660,7 @@ namespace hpx::threads {
         return static_cast<thread_data*>(tid.get());
     }
 
-#if defined(HPX_HAVE_MODULE_TRACY)
+#if defined(HPX_HAVE_TRACY)
     HPX_CXX_CORE_EXPORT HPX_CORE_EXPORT tracing::region_init_data
     get_region_init_data(thread_data const* thrdptr);
 
